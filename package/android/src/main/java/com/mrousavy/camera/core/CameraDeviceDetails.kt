@@ -7,6 +7,7 @@ import android.hardware.camera2.CameraMetadata
 import android.os.Build
 import android.util.Range
 import android.util.Size
+import android.util.SizeF
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
@@ -36,28 +37,23 @@ class CameraDeviceDetails(val cameraManager: CameraManager, val cameraId: String
   val supportsLowLightBoost = extensions.contains(4) // TODO: CameraExtensionCharacteristics.EXTENSION_NIGHT
   val lensFacing = LensFacing.fromCameraCharacteristics(characteristics)
   val hasFlash = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) ?: false
-  val focalLengths =
-    characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
-      // 35mm is the film standard sensor size
-      ?: floatArrayOf(35f)
-  val sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)!!
+  val focalLengths = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+  // 35mm is the film standard sensor size
+    ?: floatArrayOf(35f)
+  val sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE) ?: SizeF(0f, 0f)
   val sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)!!
-  val name = (
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      characteristics.get(CameraCharacteristics.INFO_VERSION)
-    } else {
-      null
-    }
-    ) ?: "$lensFacing ($cameraId)"
+  val name = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    characteristics.get(CameraCharacteristics.INFO_VERSION)
+  } else {
+    null
+  }) ?: "$lensFacing ($cameraId)"
 
   // "formats" (all possible configurations for this device)
-  val zoomRange = (
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-      characteristics.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE)
-    } else {
-      null
-    }
-    ) ?: Range(1f, characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1f)
+  val zoomRange = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    characteristics.get(CameraCharacteristics.CONTROL_ZOOM_RATIO_RANGE)
+  } else {
+    null
+  }) ?: Range(1f, characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1f)
   val physicalDevices = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && characteristics.physicalCameraIds.isNotEmpty()) {
     characteristics.physicalCameraIds
   } else {
@@ -69,23 +65,20 @@ class CameraDeviceDetails(val cameraManager: CameraManager, val cameraId: String
   val cameraConfig = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
   val isoRange = characteristics.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE) ?: Range(0, 0)
   val exposureRange = characteristics.get(CameraCharacteristics.CONTROL_AE_COMPENSATION_RANGE) ?: Range(0, 0)
-  val digitalStabilizationModes =
-    characteristics.get(CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES) ?: IntArray(0)
-  val opticalStabilizationModes =
-    characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION) ?: IntArray(0)
+  val digitalStabilizationModes = characteristics.get(CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES) ?: IntArray(0)
+  val opticalStabilizationModes = characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION) ?: IntArray(0)
   val supportsPhotoHdr = extensions.contains(3) // TODO: CameraExtensionCharacteristics.EXTENSION_HDR
   val supportsVideoHdr = getHasVideoHdr()
 
   val videoFormat = ImageFormat.YUV_420_888
 
   // get extensions (HDR, Night Mode, ..)
-  private fun getSupportedExtensions(): List<Int> =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      val extensions = cameraManager.getCameraExtensionCharacteristics(cameraId)
-      extensions.supportedExtensions
-    } else {
-      emptyList()
-    }
+  private fun getSupportedExtensions(): List<Int> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    val extensions = cameraManager.getCameraExtensionCharacteristics(cameraId)
+    extensions.supportedExtensions
+  } else {
+    emptyList()
+  }
 
   private fun getHasVideoHdr(): Boolean {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -125,6 +118,9 @@ class CameraDeviceDetails(val cameraManager: CameraManager, val cameraId: String
   }
 
   private fun getFieldOfView(focalLength: Float): Double {
+    if (sensorSize.width == 0f || sensorSize.height == 0f) {
+      return 0.0
+    }
     val sensorDiagonal = sqrt((sensorSize.width * sensorSize.width + sensorSize.height * sensorSize.height).toDouble())
     val fovRadians = 2.0 * atan2(sensorDiagonal, (2.0 * focalLength))
     return Math.toDegrees(fovRadians)
