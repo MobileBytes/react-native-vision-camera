@@ -51,6 +51,7 @@ import java.io.Closeable
 import java.util.concurrent.CancellationException
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -246,7 +247,7 @@ class CameraSession(private val context: Context, private val cameraManager: Cam
 
   private fun destroyPreviewOutputSync() {
     Log.i(TAG, "Destroying Preview Output...")
-    runBlocking {
+    launch(Dispatchers.Main) {
       configure { config ->
         config.preview = CameraConfiguration.Output.Disabled.create()
       }
