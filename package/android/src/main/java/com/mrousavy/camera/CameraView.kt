@@ -125,15 +125,6 @@ class CameraView(context: Context) :
     super.onDetachedFromWindow()
   }
 
-  override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-    val width = right - left
-    val height = bottom - top
-
-    // In React Native, subView layouts aren't automatically updated - so we manually re-layout the PreviewView.
-    previewView.layout(0, 0, width, height)
-    postInvalidate(left, top, right, bottom)
-  }
-
   fun destroy() {
     cameraSession.close()
   }
